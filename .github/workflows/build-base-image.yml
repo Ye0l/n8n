@@ -20,14 +20,20 @@ on:
         default: false
         type: boolean
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     strategy:
       fail-fast: false
       matrix:
         # One entry per published Node version: `node_version` is the
-        # `n8nio/base:<node_version>` tag, `dhi_ref` the DHI base it builds on,
+        # `ghcr.io/<owner>/base:<node_version>` tag, `dhi_ref` the DHI base it builds on,
         # pinned to a multi-arch index digest. Bump tag and digest together
         # when updating.
         include:
@@ -54,14 +60,18 @@ jobs:
           dockerhub-username: ${{ secrets.DOCKER_USERNAME }}
           dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Login to Docker registries (for pushing)
+      - name: Login to GHCR (for pushing)
         if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true)
         uses: ./.github/actions/docker-registry-login
         with:
           login-ghcr: 'true'
-          login-dockerhub: 'true'
-          dockerhub-username: ${{ secrets.DOCKER_USERNAME }}
-          dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # GHCR image names must be lowercase, but the owner name can have capitals.
+      - name: Resolve image name
+        id: image
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: echo "name=ghcr.io/${OWNER,,}/base" >> "$GITHUB_OUTPUT"
 
       - name: Build and push
         uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
@@ -75,8 +85,6 @@ jobs:
           sbom: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
           push: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true) }}
           tags: |
-            ${{ secrets.DOCKER_USERNAME }}/base:${{ matrix.node_version }}-${{ github.sha }}
-            ${{ secrets.DOCKER_USERNAME }}/base:${{ matrix.node_version }}
-            ghcr.io/${{ github.repository_owner }}/base:${{ matrix.node_version }}-${{ github.sha }}
-            ghcr.io/${{ github.repository_owner }}/base:${{ matrix.node_version }}
+            ${{ steps.image.outputs.name }}:${{ matrix.node_version }}-${{ github.sha }}
+            ${{ steps.image.outputs.name }}:${{ matrix.node_version }}
           no-cache: true
