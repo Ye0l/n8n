@@ -38,6 +38,7 @@ import type {
 	ModelConfig,
 } from '../types';
 import { withModalSession } from '../utils/modal-session';
+import { withOpenCodeGoSession } from '../utils/opencode-go-session';
 
 function resolveModalSessionModelId(
 	modelId: ModelConfig,
@@ -49,7 +50,7 @@ function resolveModalSessionModelId(
 		.find((value): value is string => value !== undefined && value.length > 0);
 	if (!threadId) return modelId;
 
-	const stickyModelId = withModalSession(modelId, threadId);
+	const stickyModelId = withOpenCodeGoSession(withModalSession(modelId, threadId), threadId);
 	if (stickyModelId === modelId) return modelId;
 
 	context.modelId = stickyModelId;

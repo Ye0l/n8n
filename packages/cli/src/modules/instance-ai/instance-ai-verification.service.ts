@@ -11,10 +11,11 @@ import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { ModelConfig, SandboxConfig } from '@n8n/instance-ai';
+import { withOpenCodeGoSession, type ModelConfig, type SandboxConfig } from '@n8n/instance-ai';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { sanitizeErrorDetail } from '@n8n/utils/redaction/sanitize-error-detail';
+import { randomUUID } from 'node:crypto';
 
 import { Telemetry } from '@/telemetry';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
@@ -121,11 +122,12 @@ export class InstanceAiVerificationService {
 			const connection = request.connection
 				? await this.settingsService.resolveModelConnectionForVerification(request.connection)
 				: undefined;
-			const modelConfig = connection
+			const resolvedModelConfig = connection
 				? this.settingsService.buildModelConfigForConnection(connection, request.modelName ?? '')
 				: request.modelName
 					? await this.settingsService.resolveModelConfigForVerification(user, request.modelName)
 					: await this.modelService.resolveAgentModelConfig(user);
+			const modelConfig = withOpenCodeGoSession(resolvedModelConfig, randomUUID());
 			// Under the AI service proxy the resolved model is a pre-built LanguageModel
 			// whose `provider` reflects the proxy transport, not the configured model —
 			// attribute from the configured model id instead.

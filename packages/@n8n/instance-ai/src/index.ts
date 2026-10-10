@@ -204,6 +204,7 @@ export { MAX_STEPS } from './constants/max-steps';
 export { parseModelHeadersJson } from './utils/parse-model-headers';
 export { modelConfigId } from './utils/model-config-id';
 export { isEndpointModelConfig } from './utils/modal-session';
+export { withOpenCodeGoSession } from './utils/opencode-go-session';
 export { resolveCustomModelExperimentDefaultsFromEnv } from './utils/custom-model-defaults';
 export {
 	WorkflowSaveConflictError,
