@@ -114,6 +114,20 @@ describe('InstanceAiModelService', () => {
 			await expect(service.resolveAgentModelConfig(fakeUser)).resolves.toBe('anthropic/claude');
 		});
 
+		it('should send the thread id as the OpenCode Go session header', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			const config = {
+				id: 'custom/deepseek-v4',
+				url: 'https://opencode.ai/zen/go/v1',
+				apiKey: 'sk-test',
+			} as const;
+			settingsService.resolveModelConfig.mockResolvedValue(config);
+
+			await expect(
+				service.resolveAgentModelConfig(fakeUser, { runId: 'run-1', threadId: 'thread-1' }),
+			).resolves.toEqual({ ...config, headers: { 'x-opencode-session': 'thread-1' } });
+		});
+
 		it('should mint proxy tokens via the instance-ai endpoint when the proxy is active', async () => {
 			aiService.isProxyEnabled.mockReturnValue(true);
 			const client = createClient();

@@ -28,6 +28,10 @@ For built-in providers, the setup service recognizes `ANTHROPIC_API_KEY`,
 `GROQ_API_KEY`, `MISTRAL_API_KEY`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, and
 `XAI_API_KEY`. `N8N_INSTANCE_AI_MODEL_API_KEY` supplies an explicit key instead.
 
+For an OpenCode Go endpoint (`https://opencode.ai/zen/go/v1`), Instance AI sends
+the thread ID in the `x-opencode-session` header. OpenCode Go rejects requests
+without this header.
+
 ### Tracing
 
 | Variable | Type | Default | Description |

@@ -9,7 +9,14 @@ const raceWithAbortMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@n8n/agents', () => ({ createModel: vi.fn(), raceWithAbort: raceWithAbortMock }));
 vi.mock('ai', () => ({ generateText: vi.fn() }));
-vi.mock('@n8n/instance-ai', () => ({ createSandbox: vi.fn(), createWorkspace: vi.fn() }));
+vi.mock('@n8n/instance-ai', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@n8n/instance-ai')>();
+	return {
+		createSandbox: vi.fn(),
+		createWorkspace: vi.fn(),
+		withOpenCodeGoSession: actual.withOpenCodeGoSession,
+	};
+});
 vi.mock('@n8n/ai-utilities', () => ({ braveSearch: vi.fn(), searxngSearch: vi.fn() }));
 vi.mock('@/utils/ai-proxy-fetch', () => ({ createAiProxyFetch: vi.fn(() => vi.fn()) }));
 
@@ -107,6 +114,26 @@ describe('InstanceAiVerificationService', () => {
 			expect(generateTextMock).toHaveBeenCalledWith(
 				// OpenAI's Responses API rejects max_output_tokens below 16.
 				expect.objectContaining({ prompt: 'Reply with OK.', maxOutputTokens: 16 }),
+			);
+		});
+
+		it('adds a session header for OpenCode Go connections', async () => {
+			const restored = { type: 'openAiApi', data: { apiKey: 'saved-key' } };
+			const modelConfig = {
+				id: 'custom/deepseek-v4',
+				url: 'https://opencode.ai/zen/go/v1',
+				apiKey: 'saved-key',
+			} as const;
+			settingsService.resolveModelConnectionForVerification.mockResolvedValue(restored);
+			settingsService.buildModelConfigForConnection.mockReturnValue(modelConfig);
+
+			await expect(
+				service.verifyModel(user, { connection, modelName: 'deepseek-v4' }),
+			).resolves.toMatchObject({ ok: true });
+
+			expect(createModelMock).toHaveBeenCalledWith(
+				{ ...modelConfig, headers: { 'x-opencode-session': expect.any(String) } },
+				expect.any(Function),
 			);
 		});
 

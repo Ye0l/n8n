@@ -8,8 +8,9 @@ import {
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { ModelConfig } from '@n8n/instance-ai';
+import { withOpenCodeGoSession, type ModelConfig } from '@n8n/instance-ai';
 import { nanoid } from 'nanoid';
+import { randomUUID } from 'node:crypto';
 
 import { N8N_VERSION } from '@/constants';
 import { AiService } from '@/services/ai.service';
@@ -76,7 +77,8 @@ export class InstanceAiModelService {
 		}
 		const httpProxyModel = await this.resolveHttpProxyModel(user);
 		if (httpProxyModel) return httpProxyModel;
-		return await this.settingsService.resolveModelConfig(user);
+		const config = await this.settingsService.resolveModelConfig(user);
+		return withOpenCodeGoSession(config, proxyContext?.threadId ?? randomUUID());
 	}
 
 	/**
