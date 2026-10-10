@@ -1,0 +1,59 @@
+name: 'Build: n8n Image'
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Produces ./compiled, the only app input the Dockerfile copies.
+      - name: Build n8n
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: pnpm build:n8n
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+
+      - name: Login to GHCR
+        uses: ./.github/actions/docker-registry-login
+        with:
+          login-ghcr: 'true'
+
+      # GHCR image names must be lowercase, but the owner name can have capitals.
+      - name: Resolve image names
+        id: image
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          echo "base=ghcr.io/${OWNER,,}/base:26.10.0" >> "$GITHUB_OUTPUT"
+          echo "name=ghcr.io/${OWNER,,}/n8n" >> "$GITHUB_OUTPUT"
+          echo "version=$(node -p "require('./packages/cli/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
+        with:
+          context: .
+          file: ./docker/images/n8n/Dockerfile
+          build-args: |
+            RUNTIME_IMAGE=${{ steps.image.outputs.base }}
+            N8N_VERSION=${{ steps.image.outputs.version }}
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ steps.image.outputs.name }}:latest
+            ${{ steps.image.outputs.name }}:${{ steps.image.outputs.version }}
+            ${{ steps.image.outputs.name }}:${{ github.sha }}
